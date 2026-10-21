@@ -1,0 +1,50 @@
+name: Build APK
+
+on:
+  push:
+    branches: [build-apk]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Settings (Saint Petersburg)
+        run: |
+          cp config.example.properties config.properties
+          sed -i \
+            -e 's/^tmdb_region=.*/tmdb_region=RU/' \
+            -e 's/^latitude=.*/latitude=59.9343/' \
+            -e 's/^longitude=.*/longitude=30.3351/' \
+            -e 's/^city=.*/city=Санкт-Петербург/' \
+            -e 's/^language=.*/language=ru/' \
+            -e 's/^temperature=.*/temperature=C/' \
+            config.properties
+          cat config.properties | grep -v '^#' | grep -v '^$'
+
+      - name: Build
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          ls "$ANDROID_HOME/build-tools" "$ANDROID_HOME/platforms"
+          ./build.sh
+
+      - name: Windows installer kit
+        run: |
+          mkdir -p kit
+          cp FreeMyTV.apk freemytv.keystore kit/
+          cp tools/windows/install.bat kit/
+          curl -fsSL -o pt.zip https://dl.google.com/android/repository/platform-tools-latest-windows.zip
+          unzip -q pt.zip -d kit
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FreeMyTV-windows
+          path: kit
+          retention-days: 3
