@@ -5,6 +5,9 @@ on:
     branches: [build-apk]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,13 +41,18 @@ jobs:
       - name: Windows installer kit
         run: |
           mkdir -p kit
-          cp FreeMyTV.apk freemytv.keystore kit/
+          cp FreeMyTV.apk kit/
           cp tools/windows/install.bat kit/
           curl -fsSL -o pt.zip https://dl.google.com/android/repository/platform-tools-latest-windows.zip
           unzip -q pt.zip -d kit
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: FreeMyTV-windows
-          path: kit
-          retention-days: 3
+      # The kit goes to its own branch, kit, so it can be fetched with git.
+      - name: Publish kit branch
+        run: |
+          cd kit
+          git init -q -b kit
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "Free My TV Windows kit (${GITHUB_SHA::7})"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" kit
